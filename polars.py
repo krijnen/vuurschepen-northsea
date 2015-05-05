@@ -6,12 +6,15 @@ def main():
 	routes = route()
 	naam, r = ['vuurschepen', 'north sea'], 0
 	for route1 in routes:
+		xdt = 0
 		for i in range (0,10000):
 			x,y,z = run(a,a0,w, route1)
 			t1.append(x)
 			t2.append(y)
 			dt.append(z)
-		print naam[r], sum(dt) / float(len(dt))
+			if z > 4:
+				xdt +=1
+		print naam[r], sum(dt) / float(len(dt)), xdt / float(len(dt))
 		r+=1
 
 def run(a, a0, w, route):	
