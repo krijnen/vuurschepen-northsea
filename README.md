@@ -9,3 +9,4 @@ De simulatie is met de volgende aannames geschreven:
 - Windrichting en snelheid zijn ongecorreleerd
 - Windrichting en snelheid zijn constant over een simulatie
 - De route die wordt gevaren is de rumpline (up en downwind wordt berekend mbv vmg)
+- Stroom wordt niet meegerekend
