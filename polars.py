@@ -3,22 +3,25 @@ import numpy as np
 def main():
 	a, a0, w = polars()
 	t1,t2,dt = [],[],[]
-	for i in range (0,10000):
-		x,y,z = run(a,a0,w)
-		t1.append(x)
-		t2.append(y)
-		dt.append(z)
-	print sum(dt) / float(len(dt))
+	routes = route()
+	naam, r = ['vuurschepen', 'north sea'], 0
+	for route1 in routes:
+		for i in range (0,10000):
+			x,y,z = run(a,a0,w, route1)
+			t1.append(x)
+			t2.append(y)
+			dt.append(z)
+		print naam[r], sum(dt) / float(len(dt))
+		r+=1
 
-def run(a, a0, w):	
-	wi = wind(w)
-	legs = route()
+def run(a, a0, w, route):	
+	wi = wind(w)	
 	t1,t2=0,0
-	for i in range (0, len(legs)-1):
-		v1 = velocity(wi, a,legs[i,0])
-		t1 += float(legs[i,1]) / v1
-		v2 = velocity(wi, a0,legs[i,0])
-		t2 += float(legs[i,1]) / v2			
+	for i in range (0, len(route)-1):
+		v1 = velocity(wi, a,route[i,0])
+		t1 += float(route[i,1]) / v1
+		v2 = velocity(wi, a0,route[i,0])
+		t2 += float(route[i,1]) / v2			
 	dt = ((t1 - t2)) * 3600.0 / t1
 	return t1,t2 , dt
 
@@ -47,8 +50,9 @@ def wind(w):
 	return x, wind			#windspeed, winddir
 
 def route():
-	route = np.loadtxt("route.txt")
-	return route
+	routeNS = np.loadtxt("routeNS.txt")
+	routeVS = np.loadtxt("routeVS.txt")
+	return routeVS, routeNS
 
 def velocity(wind, polar, leg):
 	twa = abs(wind[1] - leg)
