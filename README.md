@@ -7,6 +7,6 @@ De simulatie is met de volgende aannames geschreven:
 - Windrichting is gebaseerd op http://www.windfinder.com/windstatistics/p11-b
 - Windsnelheid is normaal verdeeld met mean 15 en std 8.55 (dit geeft een P(x<=11) van 0.32
 - Windrichting en snelheid zijn ongecorreleerd
-- Windrichting en snelheid zijn constant over een simulatie
+- Windrichting en snelheid veranderen elk uur en leg
 - De route die wordt gevaren is de rumpline (up en downwind wordt berekend mbv vmg)
 - Stroom wordt niet meegerekend
