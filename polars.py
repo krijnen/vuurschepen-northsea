@@ -1,32 +1,55 @@
 import numpy as np
+import matplotlib.pyplot as plt
 
 def main():
 	a, a0, w = polars()
-	t1,t2,dt = [],[],[]
+	t1,t2,dt, wdir, wspd = [],[],[],[],[]
 	routes = route()
-	naam, r = ['vuurschepen', 'north sea'], 0
+	naam, r, ddt = ['vuurschepen', 'north sea'], 0,0
 	for route1 in routes:
 		xdt = 0
-		for i in range (0,10000):
+		for i in range (0,1000):
 			x,y,z = run(a,a0,w, route1)
 			t1.append(x)
 			t2.append(y)
-			dt.append(z)
+			dt.append(int(z))
 			if z > 4:
 				xdt +=1
 		print naam[r], sum(dt) / float(len(dt)), xdt / float(len(dt))
+		plt.hist(dt)
+		plt.show()
 		r+=1
 
+
 def run(a, a0, w, route):	
-	wi = wind(w)	
 	t1,t2=0,0
 	for i in range (0, len(route)-1):
-		v1 = velocity(wi, a,route[i,0])
-		t1 += float(route[i,1]) / v1
-		v2 = velocity(wi, a0,route[i,0])
-		t2 += float(route[i,1]) / v2			
+		dt1, dt2 = leg(a, a0, route[i,:], w)
+		t1 += dt1
+		t2 += dt2		
 	dt = ((t1 - t2)) * 3600.0 / t1
-	return t1,t2 , dt
+	return t1,t2,dt
+
+def leg(a, a0, route, w):
+	x1 = route[1]
+	x2 = route[1]
+	v1, t1, v2, t2 = 0,0,0,0	
+	while x1 > v1:
+		wi = wind(w)
+		v1 = velocity(wi, a,route[0])
+		v2 = velocity(wi, a0,route[0])
+		if x1 > v1:
+			t1 += 1
+			x1 -= v1
+		if x2 > v2:
+			t2 += 1
+			x2 -= v2
+	t1 += x1 / v1
+	t2 += x2 / v2
+	return t1, t2
+
+
+
 
 def polars():
 	a = np.loadtxt("polar.txt")
@@ -36,7 +59,8 @@ def polars():
 
 def wind(w):
 	mu, sigma = 14, 8.55
-	x = abs(int(np.random.normal(mu,sigma)))+1  #windspeed kts
+	x = int(abs(np.random.normal(mu,sigma)))+1  #windspeed kts normal distribution
+	#x = int(29*np.random.random()) 			#windspeed uniform distribution
 	y = np.random.random()
 	pw, wdf = w[0,1],w[0,1]
 	wdf, i, wdir, dy = 0,0,0,y * 100
@@ -48,8 +72,7 @@ def wind(w):
 		dy = y * 100 - wdf
 		wdir = w[i,0]
 		wdf += w[i,1]
-
-	wind = dy/pw * 22.5 + wdir
+	wind = int(dy/pw * 22.5 + wdir)
 	return x, wind			#windspeed, winddir
 
 def route():
