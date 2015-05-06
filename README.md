@@ -5,7 +5,7 @@ Een simpele monte-carlo simulatie om twee polair-diagrammen van de Griel te verg
 De simulatie is met de volgende aannames geschreven:
 - De polair diagrammen zijn bi-lineair
 - Windrichting is gebaseerd op http://www.windfinder.com/windstatistics/p11-b
-- Windsnelheid is normaal verdeeld met mean 15 en std 8.55 (dit geeft een P(x<=11) van 0.32
+- Windsnelheid is normaal verdeeld(absolute waarden) met mean 15 en std 8.55 (dit geeft een P(x<=11) van 0.32 
 - Windrichting en snelheid zijn ongecorreleerd
 - Windrichting en snelheid zijn constant over een simulatie
 - De route die wordt gevaren is de rumpline (up en downwind wordt berekend mbv vmg)
