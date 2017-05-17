@@ -81,22 +81,30 @@ class boat(object):
                            [0, 39.5, 52, 60, 75, 90, 110, 120, 135, 150, 180]])
 
         vscale = np.array([[6, 8, 10, 12, 14, 16, 20]]) * np.ones((11, 1))
-        return (interpolate.Rbf(vscale, wscale, polar, kind='linear', smooth=2))
+        return (interpolate.Rbf(vscale.T, wscale, polar, kind='thin-plate', smooth=.2))
 
     def plot_polar(self):
-        x = np.arange(6, 22, 0.1)
-        y = np.arange(0, 180, 1)
+        x = np.arange(6, 22.1, 0.1)
+        y = np.arange(0, 181, 1)
         xi, yi = np.meshgrid(x, y)
         z = self.polar(xi, yi)
+        newx = z * np.cos(yi / 180 * pi)
+        newy = z * np.sin(yi / 180 * pi)
+        newz = xi
+
         fig = plt.figure()
         ax = Axes3D(fig)
-        ax.plot_surface(xi,yi, z)
+        ax.plot_surface(xi, yi, z)
+        plt.show()
+
+        fig = plt.figure()
+        ax = Axes3D(fig)
+        ax.plot_surface(newx, newy, newz)
+        newx = z * np.cos(-yi / 180 * pi)
+        newy = z * np.sin(-yi / 180 * pi)
+        ax.plot_surface(newx, newy, newz)
         plt.show()
 
 if __name__ == '__main__':
     b = boat()
-    print(b.maxv())
     b.plot_polar()
-    #b.twa = 0
-    #b.windspeed = 6
-    # print(b.maxv2())
