@@ -6,10 +6,10 @@ from mpl_toolkits.mplot3d import Axes3D
 
 
 class boat(object):
-    def __init__(self):
-        self.theta = 90
+    def __init__(self, theta = 90, v = 1):
+        self.theta = theta
         self.dtheta = 0
-        self.v = 1.
+        self.v = v
         self.trim = 1.
         self.polar = self.load_polar()
         self.windspeed = 10
@@ -68,7 +68,7 @@ class boat(object):
         return ((ref - self.v) - d) * k
 
     def maxv(self):
-        return(self.polar(self.windspeed, self.twa))
+        return(self.polar(self.windspeed, abs(self.twa)))
 
     def load_polar(self):
         polar = np.loadtxt("polar.txt")
