@@ -12,6 +12,7 @@ class sailor(object):
         self.loadQs()
         self.history = np.zeros((20, 4), dtype=int)
         self.j = np.array([0.8 ** i for i in range(len(self.history[:,1]))])
+        self.e = 0.05                               #fraction of random actions
 
     def loadQs(self):
         try:
@@ -25,23 +26,44 @@ class sailor(object):
     def get_action(self, twa, v, ws, vmg):
         self.update_Q(vmg)
 
-        #Qs = full_Q()
-        action = int(18 * (random.random() - 0.5))
+        Qs = local_Q(np.array([twa, v, ws]))
+        best = np.argmax(np.array([Qs(twa, v, ws, i) for i in range(19)]))
+        action = best if random.random()>(1-self.e) else int(18 * (random.random() - 0.5))
         a = np.array([[int(twa + 179), int(v * 10),
                           int(ws), int(action+9)]])
         self.history = np.concatenate((a, self.history[0:-1, :]))
-        return action
+        return best
 
     def update_Q(self, vmg):
         self.Q_vmg_up[self.history] = self.Q_vmg_up[self.history] * (1-self.j) + vmg * self.j
 
+    def local_Q(self, loc):
+        a = timer()
+        k = 0.01
+        dim = np.array([360, 100, 16, 19])     
+        for j in range(100):
+            slice1 = loc - j * k * dim[0:3] - 1
+            slice1[slice1<0] = 0
+            slice2 = loc + j * k * dim[0:3] + 1
+            for i in range(3): 
+                if slice2[i] > dim[i]: slice2[i] = dim[i]
+            ind = np.nonzero(self.Q_vmg_up[int(slice1[0]):int(slice2[0]),int(slice1[1]):int(slice2[1]),int(slice1[2]):int(slice2[2]),0:18])
+            ids = np.transpose(ind)
+            if ids.size > 100:
+                break
+        for i in range(3): 
+            for j in range(len(ind[i])):
+                ind[i][j] += int(slice1[i])
+        ids = np.transpose(ind)
+        Qs = (interpolate.Rbf(ids[:,0], ids[:,1], ids[:,2], ids[:,3], self.Q_vmg_up[ind], kind='cubic'))
+        b = timer()
+        #print(b-a)
+        return Qs, slice1, slice2
 
     def full_Q(self):
         ind = np.nonzero(self.Q_vmg_up)
         Q = self.Q_vmg_up[ind]
-        print(Q.shape)
         ind = np.transpose(ind)
-        print(Q)
         Qs = (interpolate.Rbf(ind[:,0], ind[:,1], ind[:,2], ind[:,3], Q, kind='cubic'))
         return Qs
 
@@ -53,9 +75,9 @@ class sailor(object):
         x = np.arange(-9, 10, 1)
         y = np.arange(-180, 180, 1)
         a = timer()
-        Qs = self.full_Q()
+        Qs, s1,s2 = self.local_Q([45,4,10])
         b = timer()
-        print(b-a)
+        #print(b-a)
         xi, yi = np.meshgrid(x, y)
         o = np.ones(xi.shape)
         z = Qs(xi, o*5, o*10, yi)
@@ -65,7 +87,14 @@ class sailor(object):
 
 if __name__ == '__main__':
     s = sailor()
-    s.show_Q()
+    Qs, s1, s2 = s.local_Q(np.array([45,4,10]))
+    #Qs2 = s.full_Q()
+    print(Qs(45,4,10,0))
+    #print(Qs2(45,4,10,0))
+    #s.show_Q()
+    print(np.argmax(np.array([Qs(45, 4, 10,i) for i in range(19)])))
+
+
 
 
 """        try:
