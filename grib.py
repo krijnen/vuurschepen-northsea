@@ -2,118 +2,73 @@ import os
 #import pygrib
 import numpy as np
 import datetime
-import iris_grib
-import iris
+import pygrib
 from math import *
 import numpy.random as npr
 from timeit import default_timer as timer
-
-
-#grbs = pygrib.open('gribs/harmonie_zy_ijmg_wind.grb')
-#for g in grbs:
-#  print(g.time)
-  #print(g.latlons())
-
+import matplotlib.pyplot as plt
+import matplotlib.colors as colors
+from mpl_toolkits.basemap import Basemap
+from mpl_toolkits.basemap import shiftgrid
+from scipy.interpolate import LinearNDInterpolator
 
 class Grib:
   def __init__(self, file = 'gribs/20171128_151424_.grb'):
     self.file = file
-    self.cubes = self._cubes()
-    self.dict = {}
+    self.gribfile = pygrib.open(file)
+    self.interpolator()
     
-    
-  def _cubes(self):
-    cubes = list(iris_grib.load_cubes(self.file))
-    cubes = iris.cube.CubeList(cubes)
-    cubes = cubes.merge()
-    cubes = cubes.merge()
-    return cubes
+  def plot(self):
+    grb = self.gribfile.select()[0]
+    lons = np.linspace(float(grb['longitudeOfFirstGridPointInDegrees']), \
+              float(grb['longitudeOfLastGridPointInDegrees']), int(grb['Ni']) )
+    lats = np.linspace(float(grb['latitudeOfFirstGridPointInDegrees']), \
+                float(grb['latitudeOfLastGridPointInDegrees']), int(grb['Nj']) )
+    data = grb.values
+    grid_lon, grid_lat = np.meshgrid(lons, lats) #regularly spaced 2D grid
+    m = Basemap(projection='cyl', llcrnrlon=lons.min(), \
+        urcrnrlon=lons.max(),llcrnrlat=lats.min(),urcrnrlat=lats.max(), \
+        resolution='c')
+     
+    x, y = m(grid_lon, grid_lat)
+     
+    cs = m.pcolormesh(x,y,data,shading='flat',cmap=plt.cm.gist_stern_r)
+     
+    m.drawcoastlines()
+    m.drawmapboundary()
+    m.drawparallels(np.arange(-90.,120.,30.),labels=[1,0,0,0])
+    m.drawmeridians(np.arange(-180.,180.,60.),labels=[0,0,0,1])
+     
+    plt.colorbar(cs,orientation='vertical', shrink=0.5)
+    plt.title('CAMS AOD forecast') # Set the name of the variable to plot
+    plt.savefig('picture.png') # Set the output file name
 
-  def get_wind(self, time, location):
-    if not time in self.dict:
-      point = [('time', time)]
-      x = grb.cubes[2].interpolate(point, iris.analysis.Nearest())
-      y = grb.cubes[4].interpolate(point, iris.analysis.Nearest())
-      self.dict[time] = [x,y]
-    point = [('longitude', location.lon), ('latitude', location.lat)]
-    x = self.dict[time][0].interpolate(point, iris.analysis.Linear()).data
-    y = self.dict[time][1].interpolate(point, iris.analysis.Linear()).data
-    return (x,y)
+  def interpolator(self):
+    grb = self.gribfile.select()[0]
+    lons = np.linspace(float(grb['longitudeOfFirstGridPointInDegrees']), \
+              float(grb['longitudeOfLastGridPointInDegrees']), int(grb['Ni']) )
+    lats = np.linspace(float(grb['latitudeOfFirstGridPointInDegrees']), \
+                float(grb['latitudeOfLastGridPointInDegrees']), int(grb['Nj']) )
+    grbU = self.gribfile.select(name='10 metre U wind component')
 
+    grbV = self.gribfile.select(name='10 metre V wind component')
+    times = np.linspace(float(grb.P2), float((self.gribfile.select()[-1]).P2), 
+            float((self.gribfile.select()[1]).P2 - grb.P2))
+    U = np.array([grbU[i].values for i in range(times.size)])
+    V = np.array([grbV[i].values for i in range(times.size)])
+    print(U.shape)
+    points = np.meshgrid(lons, lats, times)
+    self.interpolatorU = LinearNDInterpolator(points, U)
+    self.interpolatorV = LinearNDInterpolator(points, V)
 
-class Location:
-  def __init__(self, lon, lat):
-    # init lon and lat in degrees
-    self.lon = lon
-    self.lat = lat
-
-  def angle_to(self, loc1):
-    # in degr from north
-    dx = loc1.lon - self.lon
-    dy = loc1.lat - self.lat
-    return atan2(dx,dy)*180/pi % 360
-
-  def angle_from(self, loc1):
-    # in degr
-    dx = loc1.lon - self.lon
-    dy = loc1.lat - self.lat
-    return atan2(-dx,-dy)*180/pi % 360
-
-  def dist_to(self, loc1):
-    # in nm
-    dx = loc1.lon - self.lon
-    dy = loc1.lat - self.lat
-    return sqrt(dx**2 + dy**2) * 60
-
-  def move(self, hdg, speed, t=1):
-    #speed in nm, hdg in degrees
-    dx = speed / 60. * t * sin(hdg/180*pi)
-    dy = speed / 60. * t * cos(hdg/180*pi)
-    self.lon = self.lon + dx
-    self.lat = self.lat + dy
-
-
-def route(start, end):
-  length = start.dist_to(end)
-  print(start.angle_from(end))
-  n_nodes = 10
-  bearings = np.multiply(npr.randn(n_nodes,2), np.array([90, length/n_nodes/4]) * np.ones((n_nodes, 2))) + (np.array([start.angle_to(end), length/n_nodes])) * np.ones((n_nodes, 2))
-  #print (nodes)
-  #nodes= list(n_nodes)
-  for hdg, dist in bearings:
-    print(hdg, dist)
+  def getwind(self, position, time):
+    U = self.interpolatorU(position(1), position(2), time)
+    V = self.interpolatorV(position(1), position(2), time)
+    wind = sqrt(U**2 + V**2)
+    winddir = arctan(U/V)*180/pi
+    return wind, winddir
 
 
-
-start = Location(lon = -9, lat = 38) #Lisboa
-end = Location(lon=18.43, lat = -33.97) #CapeTown
-
-route(start, end)
-
-
-
-
-time1 = timer()
-grb = Grib()
-print('start')
-time2 = timer()
-print(time2-time1)
-
-time3 = timer()
-print(grb.get_wind(0, end))
-time4 = timer()
-print(grb.get_wind(0, start))
-time5 = timer()
-print(time4 - time3, time5-time4)
-
-"""
-
-location = [('time', 0), ('longitude', 0), ('latitude', 0)]
-print(grb.cubes[0].interpolate(location, iris.analysis.Nearest()).data)
-print(grb.cubes[1].interpolate(location, iris.analysis.Nearest()).data)
-print(grb.cubes[2].interpolate(location, iris.analysis.Nearest()).data)
-print(grb.cubes[3].interpolate(location, iris.analysis.Nearest()).data)
-print(grb.cubes[4].interpolate(location, iris.analysis.Nearest()).data)
-print(grb.cubes[5].interpolate(location, iris.analysis.Nearest()).data)
-print(grb.cubes[2].interpolate(location, iris.analysis.Nearest()).data)
-#print(grb.cubes[4].interpolate(location, iris.analysis.Nearest()).summary(shorten=True) """
+if __name__ == '__main__':  
+  g = Grib()
+  g.plot()
