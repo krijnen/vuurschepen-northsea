@@ -18,4 +18,4 @@ class location(object):
     def angle(self, location):
         dx = location.x - self.x
         dy = location.y - self.y
-        return tan(dx / dy)
+        return atan2(dx,dy)*180/pi

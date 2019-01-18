@@ -11,14 +11,12 @@ import matplotlib.colors as colors
 from mpl_toolkits.basemap import Basemap
 from mpl_toolkits.basemap import shiftgrid
 from scipy.interpolate import RegularGridInterpolator 
-from scipy.interpolate import LinearNDInterpolator
 
 
 class Grib:
   def __init__(self, file = 'gribs/20171128_151424_.grb'):
     self.file = file
     self.gribfile = pygrib.open(file)
-    #self.interpolator()
     
   def plot(self, idx = 0, show = False):
     grb = self.gribfile.select()[idx]
@@ -30,18 +28,18 @@ class Grib:
                 float(grb['latitudeOfLastGridPointInDegrees']), int(grb['Nj']) )
     data = np.sqrt(np.square(grbU.values)+np.square(grbV.values))
     grid_lon, grid_lat = np.meshgrid(lons, lats) #regularly spaced 2D grid
-    m = Basemap(projection='cyl', llcrnrlon=lons.min(), \
+    self.map = Basemap(projection='cyl', llcrnrlon=lons.min(), \
         urcrnrlon=lons.max(),llcrnrlat=lats.min(),urcrnrlat=lats.max(), \
         resolution='c')
      
-    x, y = m(grid_lon, grid_lat)
+    x, y = self.map(grid_lon, grid_lat)
      
-    cs = m.pcolormesh(x,y,data,shading='flat',cmap=plt.cm.rainbow)
+    cs =self.map.pcolormesh(x,y,data,shading='flat',cmap=plt.cm.rainbow)
     
-    m.drawcoastlines()
-    m.drawmapboundary()
-    m.drawparallels(np.arange(-90.,120.,30.),labels=[1,0,0,0])
-    m.drawmeridians(np.arange(-180.,180.,60.),labels=[0,0,0,1])
+    self.map.drawcoastlines()
+    self.map.drawmapboundary()
+    self.map.drawparallels(np.arange(-90.,120.,30.),labels=[1,0,0,0])
+    self.map.drawmeridians(np.arange(-180.,180.,60.),labels=[0,0,0,1])
      
     plt.colorbar(cs,orientation='vertical', shrink=0.5)
     plt.title('Predicted wind strength') 
@@ -72,24 +70,30 @@ class Grib:
     self.interpolatorU = RegularGridInterpolator((lats, lons, times), U)
     self.interpolatorV = RegularGridInterpolator((lats, lons, times), V)
 
-    #self.interpolatorU = LinearNDInterpolator(points, U)
-    #self.interpolatorV = LinearNDInterpolator(points, V)
-
   def getwind(self, p, time):
     U = self.interpolatorU((p.lat, p.lon, time))
     V = self.interpolatorV((p.lat, p.lon, time))
     wind = sqrt(U**2 + V**2)
     winddir = atan2(U,V)*180/pi
     return wind, winddir
+  
+  def is_land(self,p):
+    return self.map.is_land(p.lat, p.lon)
+
 
 class Position:
     def __init__(p, lat = 0, lon = 0):
-        p.lat = lat
-        p.lon = lon
+      p.lat = lat
+      p.lon = lon
+      radius = 3440 # earths radius in nm
+    def update(p, distance, direction):
+      x = distance * sin(direction/180*pi)
+      y = distance * cos(direction/180*pi)
+      dlat = x / (p.radius * pi * 2) * 360
+      dlon = y / (p.radius * pi * 2) * 360
+      p.lat += dlat
+      p.lon += dlon
 
 if __name__ == '__main__':  
   g = Grib()
-  g.interpolator()
-  p = Position(0,0)
-  print(p.lat)
-  print(g.getwind(p, 0))
+  g.plot(show =1)
